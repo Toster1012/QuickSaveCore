@@ -4,26 +4,17 @@
     {
         public static QuickSaveConfiguration Configuration { get; set; }
 
-        public static void Save(object date, Action<bool>? callback = null)
+        public static void Save<T>(T date, Action<bool>? callback = null)
         {
-            if (!ConfigurationValid())
-                throw new ArgumentNullException("Configuration cannot be null! Please create the configuration file.");
-
-            if (Configuration.Formatter.Serialize(date, Configuration))
-                callback?.Invoke(true);
-
-            callback?.Invoke(false);
+            SaveAsync(date, callback);
         }
 
         public static T Load<T>()
         {
-            if (!ConfigurationValid())
-                throw new ArgumentNullException("Configuration cannot be null! Please create the configuration file.");
-
-            return Configuration.Formatter.Deserialize<T>(Configuration);
+            return LoadAsync<T>().Result;
         }
 
-        public static async void SaveAsync(object date, Action<bool>? callback = null)
+        public static async void SaveAsync<T>(T date, Action<bool>? callback = null)
         {
             if (!ConfigurationValid())
                 throw new ArgumentNullException("Configuration cannot be null! Please create the configuration file.");

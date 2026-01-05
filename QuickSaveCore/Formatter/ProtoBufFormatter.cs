@@ -1,13 +1,22 @@
 ﻿using ProtoBuf;
-using System.IO;
 using System.IO.Compression;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Reflection;
 
-namespace QuickSave.Format
+namespace QuickSave
 {
     public class ProtoBufFormatter : IFormatter
     {
-        public async Task<bool> SerializeAsync(object data, QuickSaveConfiguration configuration)
+        public bool Serialize<T>(T data, QuickSaveConfiguration configuration)
+        {
+            return SerializeAsync(data, configuration).Result;
+        }
+
+        public T Deserialize<T>(QuickSaveConfiguration configuration)
+        {
+            return DeserializeAsync<T>(configuration).Result;
+        }
+
+        public async Task<bool> SerializeAsync<T>(T data, QuickSaveConfiguration configuration)
         {
             string? _directory = Path.GetDirectoryName(configuration.Path);
             if (!string.IsNullOrEmpty(_directory) && !Directory.Exists(_directory))
@@ -27,16 +36,20 @@ namespace QuickSave.Format
                 if (!File.Exists(configuration.Path))
                     throw new Exception($"File not foun from path: {configuration.Path}");
 
-                await using var _fileStream = new FileStream(configuration.Path, FileMode.Open, FileAccess.Write);
+                if (TypeIsValid<T>())
+                {
+                    await using var _fileStream = new FileStream(configuration.Path, FileMode.Open, FileAccess.Write);
 
-                if (configuration.UseGzipCompression)
-                {
-                    await CompressAsync(_fileStream, data, configuration.Path);
-                }
-                else
-                {
-                    Serializer.Serialize(_fileStream, data);
-                    await _fileStream.FlushAsync();
+                    if (configuration.UseGzipCompression)
+                    {
+                        await GZipArchiver.CompressAsync(_fileStream, data, configuration.Path);
+                    }
+                    else
+                    {
+                        Serializer.Serialize(_fileStream, data);
+                        await _fileStream.FlushAsync();
+                    }
+
                 }
 
                 return File.Exists(configuration.Path);
@@ -54,18 +67,23 @@ namespace QuickSave.Format
                 if (!File.Exists(configuration.Path))
                     throw new Exception($"File not foun from path: {configuration.Path}");
 
-                await using var _fileStream = new FileStream(configuration.Path, FileMode.Open, FileAccess.Read);
+                if (TypeIsValid<T>())
+                {
+                    await using var _fileStream = new FileStream(configuration.Path, FileMode.Open, FileAccess.Read);
 
-                if (configuration.UseGzipCompression)
-                {
-                    return await DecompressAsync<T>(_fileStream, configuration.Path);
+                    if (configuration.UseGzipCompression)
+                    {
+                        return await GZipArchiver.DecompressAsync<T>(_fileStream, configuration.Path);
+                    }
+                    else
+                    {
+                        T _data = Serializer.Deserialize<T>(_fileStream);
+                        await _fileStream.FlushAsync();
+                        return _data;
+                    }
                 }
-                else
-                {
-                    T _data = Serializer.Deserialize<T>(_fileStream);
-                    await _fileStream.FlushAsync();
-                    return _data;
-                }
+
+                return default;
             }
             catch (Exception ex)
             {
@@ -73,96 +91,69 @@ namespace QuickSave.Format
             }
         }
 
-        public bool Serialize(object data, QuickSaveConfiguration configuration)
+
+        private bool TypeIsValid<T>()
         {
-            string? _directory = Path.GetDirectoryName(configuration.Path);
-            if (!string.IsNullOrEmpty(_directory) && !Directory.Exists(_directory))
+            Type _type = typeof(T); 
+            
+            if (!HasProtoContractAttribute(_type))
+                throw new MissingAttributeException(typeof(ProtoContractAttribute), "was not found on the file!");
+
+            List<int> _activeTag = new List<int>();
+
+            foreach (FieldInfo field in _type.GetFields(
+                BindingFlags.Instance |
+                BindingFlags.NonPublic |
+                BindingFlags.Public |
+                BindingFlags.Static))
             {
-                if (configuration.CreateDirectoryIfNotExist)
+                if (HasProtoMmemberAttribute(field, out int tag))
                 {
-                    Directory.CreateDirectory(_directory);
+                    if (!_activeTag.Contains(tag))
+                        _activeTag.Add(tag);
+                    else
+                        throw new IncorrectTagException(tag);
                 }
                 else
                 {
-                    throw new Exception("Directory not exist");
+                    throw new MissingAttributeException(typeof(ProtoMemberAttribute), "was not found on the property!");
                 }
             }
 
-            try
+            return true;
+        }
+
+        private bool HasProtoContractAttribute(Type type)
+        {
+            var _attributes = type.GetCustomAttributes(false);
+
+            foreach (var attribute in _attributes)
             {
-                if (!File.Exists(configuration.Path))
-                    throw new Exception($"File not foun from path: {configuration.Path}");
-
-                using var _fileStream = new FileStream(configuration.Path, FileMode.Open, FileAccess.Write);
-
-                if (configuration.UseGzipCompression)
+                if (attribute.GetType() == typeof(ProtoContractAttribute))
                 {
-                    Compress(_fileStream, data, configuration.Path);
+                    return true;
                 }
-                else
-                {
-                    Serializer.Serialize(_fileStream, data);
-                }
-
-                return File.Exists(configuration.Path);
             }
-            catch (Exception ex)
+
+            return false;
+        }
+
+        private bool HasProtoMmemberAttribute(FieldInfo type, out int tag)
+        {
+            var _propertyAttributes = type.GetCustomAttributes(false);
+
+            foreach (var attribute in _propertyAttributes)
             {
-                throw new InvalidOperationException($"Failed to serialize data to {configuration.Path}", ex);
-            }
-        }
-
-        public T Deserialize<T>(QuickSaveConfiguration configuration)
-        {
-            try
-            {
-                if (!File.Exists(configuration.Path))
-                    throw new Exception($"File not foun from path: {configuration.Path}");
-
-                using var _fileStream = new FileStream(configuration.Path, FileMode.Open, FileAccess.Read);
-
-                if (configuration.UseGzipCompression)
+                if (Attribute.IsDefined(type, typeof(ProtoMemberAttribute)))
                 {
-                    return Decompress<T>(_fileStream, configuration.Path);
-                }
-                else
-                {
-                    T _data = Serializer.Deserialize<T>(_fileStream);
-                    return _data;
+                    tag = ((ProtoMemberAttribute)attribute).Tag;
+                    return true;
                 }
             }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Failed to serialize data to {configuration.Path}", ex);
-            }
-        }
 
-        private async Task CompressAsync(Stream stream, object data, string filePath)
-        {
-            await using var _gzipStream = new GZipStream(stream, CompressionMode.Compress);
-            Serializer.Serialize(_gzipStream, data);
-            await _gzipStream.FlushAsync();
-        }
-
-        private async Task<T> DecompressAsync<T>(Stream stream, string filePath)
-        {
-            await using var _gzipStream = new GZipStream(stream, CompressionMode.Decompress);
-            T _data = Serializer.Deserialize<T>(_gzipStream);
-            await _gzipStream.FlushAsync();
-            return _data;
-        }
-
-        private void Compress(Stream stream, object data, string filePath)
-        {
-            using var _gzipStream = new GZipStream(stream, CompressionMode.Compress);
-            Serializer.Serialize(_gzipStream, data);
-        }
-
-        private T Decompress<T>(Stream stream, string filePath)
-        {
-            using var _gzipStream = new GZipStream(stream, CompressionMode.Decompress);
-            T _data = Serializer.Deserialize<T>(_gzipStream);
-            return _data;
+            tag = -1;
+            
+            return false;
         }
     }
 }

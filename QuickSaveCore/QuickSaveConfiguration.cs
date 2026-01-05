@@ -1,4 +1,4 @@
-﻿using QuickSave.Format;
+﻿using QuickSave;
 
 namespace QuickSave
 {
