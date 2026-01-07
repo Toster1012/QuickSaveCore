@@ -1,6 +1,6 @@
 ﻿namespace QuickSave
 {
-    internal class MissingAttributeException : SystemException
+    internal sealed class MissingAttributeException : SystemException
     {
         private Type _missingAttribute;
         private string _message;

@@ -1,20 +1,25 @@
-﻿using QuickSave;
-
-namespace QuickSave
+﻿namespace QuickSave
 {
     public sealed class QuickSaveConfiguration
     {
-        public string Path { get; private set; }
-        public IFormatter Formatter { get; private set; } = new ProtoBufFormatter();
-        public bool CreateDirectoryIfNotExist { get; private set; } = false;
-        public bool UseGzipCompression { get; private set; } = false;
+        public string Path { get; set; }
+        public IFormatter Formatter { get; set; } = new MessagePackFormatter();
+        public bool CreateDirectoryIfNotExist { get; set; } = false;
+        public bool UseGzipCompression { get; set; } = false;
 
-        public QuickSaveConfiguration(string path, IFormatter formatter, bool createDirectoryIfNotExist, bool useGzipCompression)
+        private List<SerializeInstruction> _serializeInstructions = new List<SerializeInstruction>();
+
+        public IEnumerable<SerializeInstruction> SerializeInstructions => _serializeInstructions;
+
+        public void AddInstruction(params SerializeInstruction[] serializeInstructions)
         {
-            Path = path;
-            Formatter = formatter;
-            CreateDirectoryIfNotExist = createDirectoryIfNotExist;
-            UseGzipCompression = useGzipCompression;
+            foreach (var serializeInstruction in serializeInstructions)
+            {
+                if (!_serializeInstructions.Contains(serializeInstruction))
+                {
+                    _serializeInstructions.Add(serializeInstruction);
+                }
+            }
         }
     }
 }
