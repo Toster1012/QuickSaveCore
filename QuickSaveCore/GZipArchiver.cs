@@ -2,32 +2,16 @@
 
 namespace QuickSave
 {
-    internal static class GZipArchiver
+    public static class GZipArchiver
     {
-        public static async Task CompressAsync<T>(Stream stream, T? data, string filePath, Func<Stream, object, Task> serialize)
+        public static GZipStream Compress(Stream stream)
         {
-            if (data == null)
-                return;
-
-            await using var _gzipStream = new GZipStream(stream, CompressionMode.Compress);
-
-            QSValue _qSValue = new QSValue(data, typeof(T));
-            await serialize.Invoke(_gzipStream, data);
-            await _gzipStream.FlushAsync();
+            return new GZipStream(stream, CompressionMode.Compress, leaveOpen: true);
         }
 
-        public static async Task<T> DecompressAsync<T>(Stream stream, string filePath, Func<Stream, Task<T>> deserialize)
+        public static GZipStream Decompress(Stream stream)
         {
-            await using var _gzipStream = new GZipStream(stream, CompressionMode.Decompress);
-            
-            try
-            {
-                return deserialize.Invoke(_gzipStream).Result;
-            }
-            finally
-            {
-                await _gzipStream.FlushAsync();
-            }
+            return new GZipStream(stream, CompressionMode.Decompress, leaveOpen: true);
         }
     }
 }

@@ -33,40 +33,24 @@ namespace QuickSave
 
             try
             {
-                await using var _fileStream = new FileStream(configuration.Path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None);
+                await using var _fileStream = new FileStream(configuration.Path, FileMode.Create, FileAccess.Write,
+                     FileShare.Write, bufferSize: 4096, useAsync: true);
+
+                foreach (var serializeInstruction in configuration.SerializeInstructions)
+                {
+                    if (serializeInstruction.SerializeType == typeof(T))
+                    {
+                        if (configuration.UseGzipCompression)
+                            return await Serialize(GZipArchiver.Compress(_fileStream), serializeInstruction.Write(data));
+                        else
+                            return await Serialize(_fileStream, serializeInstruction.Write(data));   
+                    }
+                }
 
                 if (configuration.UseGzipCompression)
-                {
-                    foreach (var serializeInstruction in configuration.SerializeInstructions)
-                    {
-                        if (serializeInstruction.SerializeType == typeof(T))
-                        {
-                            await GZipArchiver.CompressAsync(_fileStream, serializeInstruction.Write(data), configuration.Path, (stream, serializeData)
-                                => Serialize<T>(stream, serializeData));
+                    return await Serialize(GZipArchiver.Compress(_fileStream), data);
 
-                            return File.Exists(configuration.Path);
-                        }
-                    }
-
-                    await GZipArchiver.CompressAsync(_fileStream, data, configuration.Path, (stream, serializeData)
-                        => Serialize<T>(stream, serializeData));
-
-                    return File.Exists(configuration.Path);
-                }
-                else
-                {
-                    foreach (var serializeInstruction in configuration.SerializeInstructions)
-                    {
-                        if (serializeInstruction.SerializeType == typeof(T))
-                        {
-                            await Serialize<T>(_fileStream, serializeInstruction.Write(data));
-                            return File.Exists(configuration.Path);
-                        }
-                    }
-
-                    await Serialize<T>(_fileStream, data);
-                    return File.Exists(configuration.Path);
-                }
+                return await Serialize(_fileStream, data);
             }
             catch (Exception exception)
             {
@@ -81,34 +65,24 @@ namespace QuickSave
                 if (!File.Exists(configuration.Path))
                     throw new Exception($"File not foun from path: {configuration.Path}");
 
-                await using var _fileStream = new FileStream(configuration.Path, FileMode.Open, FileAccess.Read, FileShare.None);
+                await using var _fileStream = new FileStream(configuration.Path, FileMode.Open, FileAccess.Read, 
+                    FileShare.Read, bufferSize: 4096, useAsync: true);
+
+                foreach (var serializeInstruction in configuration.SerializeInstructions)
+                {
+                    if (serializeInstruction.SerializeType == typeof(T))
+                    {
+                        if (configuration.UseGzipCompression)
+                            return await Deserialize<T>(GZipArchiver.Decompress(_fileStream), serializeInstruction);
+
+                        return await Deserialize<T>(_fileStream, serializeInstruction);
+                    }
+                }
 
                 if (configuration.UseGzipCompression)
-                {
-                    foreach (var serializeInstruction in configuration.SerializeInstructions)
-                    {
-                        if (serializeInstruction.SerializeType == typeof(T))
-                        {
-                            return await GZipArchiver.DecompressAsync(_fileStream, configuration.Path, (stream)
-                                => Deserialize<T>(stream, serializeInstruction));
-                        }
-                    }
+                    return await Deserialize<T>(GZipArchiver.Decompress(_fileStream));
 
-                    return await GZipArchiver.DecompressAsync(_fileStream, configuration.Path, (stream)
-                                => Deserialize<T>(stream));
-                }
-                else
-                {
-                    foreach (var serializeInstruction in configuration.SerializeInstructions)
-                    {
-                        if (serializeInstruction.SerializeType == typeof(T))
-                        {
-                            return await Deserialize<T>(_fileStream, serializeInstruction);
-                        }
-                    }
-
-                    return await Deserialize<T>(_fileStream);
-                }
+                return await Deserialize<T>(_fileStream);
             }
             catch (Exception exception)
             {
@@ -116,22 +90,26 @@ namespace QuickSave
             }
         }
 
-        private async Task Serialize<T>(Stream stream, object serializeObject)
+        private async Task<bool> Serialize<T>(Stream stream, T serializeObject)
         {
             if (serializeObject == null)
-                return;
+                return false;
 
+            long _startPosition = stream.Position;
             QSValue _qSValue = new QSValue(serializeObject, typeof(T));
+
             MessagePackSerializer.Serialize(stream, _qSValue, _options);
             await stream.FlushAsync();
+
+            return (stream.Position - _startPosition) > 0;
         }
 
         private async Task<T> Deserialize<T>(Stream stream, SerializeInstruction? serializeInstruction = null)
         {
-            QSValue _qSValue = MessagePackSerializer.Deserialize<QSValue>(stream, _options);
-
             try
             {
+                QSValue _qSValue = MessagePackSerializer.Deserialize<QSValue>(stream, _options);
+
                 if (serializeInstruction != null)
                     return (T)serializeInstruction.Read(_qSValue.Value);
 
