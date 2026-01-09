@@ -6,17 +6,17 @@ namespace QuickSave
     {
         private readonly MessagePackSerializerOptions _options = MessagePackSerializer.Typeless.DefaultOptions;
 
-        public bool Serialize<T>(T data, QuickSaveConfiguration configuration)
+        public bool Serialize<T>(T data, Configuration configuration, SerializeOption option)
         {
-            return SerializeAsync(data, configuration).Result;
+            return SerializeAsync(data, configuration, option).Result;
         }
 
-        public T Deserialize<T>(QuickSaveConfiguration configuration)
+        public T Deserialize<T>(Configuration configuration, SerializeOption option)
         {
-            return DeserializeAsync<T>(configuration).Result;
+            return DeserializeAsync<T>(configuration, option).Result;
         }
 
-        public async Task<bool> SerializeAsync<T>(T data, QuickSaveConfiguration configuration)
+        public async Task<bool> SerializeAsync<T>(T data, Configuration configuration, SerializeOption option)
         {
             string? _directory = Path.GetDirectoryName(configuration.Path);
             if (!string.IsNullOrEmpty(_directory) && !Directory.Exists(_directory))
@@ -36,7 +36,7 @@ namespace QuickSave
                 await using var _fileStream = new FileStream(configuration.Path, FileMode.Create, FileAccess.Write,
                      FileShare.Write, bufferSize: 4096, useAsync: true);
 
-                foreach (var serializeInstruction in configuration.SerializeInstructions)
+                foreach (var serializeInstruction in option.SerializeInstructions)
                 {
                     if (serializeInstruction.SerializeType == typeof(T))
                     {
@@ -58,7 +58,7 @@ namespace QuickSave
             }
         }
 
-        public async Task<T> DeserializeAsync<T>(QuickSaveConfiguration configuration)
+        public async Task<T> DeserializeAsync<T>(Configuration configuration, SerializeOption option)
         {
             try
             {
@@ -68,7 +68,7 @@ namespace QuickSave
                 await using var _fileStream = new FileStream(configuration.Path, FileMode.Open, FileAccess.Read, 
                     FileShare.Read, bufferSize: 4096, useAsync: true);
 
-                foreach (var serializeInstruction in configuration.SerializeInstructions)
+                foreach (var serializeInstruction in option.SerializeInstructions)
                 {
                     if (serializeInstruction.SerializeType == typeof(T))
                     {

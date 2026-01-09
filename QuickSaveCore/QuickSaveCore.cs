@@ -2,22 +2,24 @@
 {
     public static class QuickSaveCore
     {
-        public static void Save<T>(T date, QuickSaveConfiguration configuration, Action<bool>? callback = null)
+        public static SerializeOption Option { get; set; } = GetDefualtOptions();
+
+        public static void Save<T>(T date, Configuration configuration, Action<bool>? callback = null)
         {
             SaveAsync(date, configuration, callback);
         }
 
-        public static T Load<T>(QuickSaveConfiguration configuration, Action<bool>? callback = null)
+        public static T Load<T>(Configuration configuration, Action<bool>? callback = null)
         {
             return LoadAsync<T>(configuration, callback).GetAwaiter().GetResult();
         }
 
-        public static async void SaveAsync<T>(T date, QuickSaveConfiguration configuration, Action<bool>? callback = null)
+        public static async void SaveAsync<T>(T date, Configuration configuration, Action<bool>? callback = null)
         {
-            callback?.Invoke(await configuration.Formatter.SerializeAsync(date, configuration));
+            callback?.Invoke(await Option.Formatter.SerializeAsync(date, configuration, Option));
         }
 
-        public static async Task<T> LoadAsync<T>(QuickSaveConfiguration configuration, Action<bool>? callback = null)
+        public static async Task<T> LoadAsync<T>(Configuration configuration, Action<bool>? callback = null)
         {
             const int MaxRetries = 10;
             const int BaseDelayMs = 50;
@@ -28,7 +30,7 @@
             {
                 try
                 {
-                    T _result = await configuration.Formatter.DeserializeAsync<T>(configuration);
+                    T _result = await Option.Formatter.DeserializeAsync<T>(configuration, Option);
                     callback?.Invoke(true);
                     return _result;
                 }
@@ -68,5 +70,7 @@
 
             return exception.InnerException != null && IsRetryableError(exception.InnerException);
         }
+
+        private static SerializeOption GetDefualtOptions() => new SerializeOption() { Formatter = new MessagePackFormatter() };
     }
 }
