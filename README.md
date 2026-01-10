@@ -48,11 +48,56 @@ var config = new QuickSaveConfiguration
     CreateDirectoryIfNotExist = true     // automatically create folder if needed
 };
 
-// Save data
-var player = new Player { Name = "Alex", Level = 42, Score = 1337 };
-await QuickSaveCore.SaveAsync("player", player, config);
+### Working with custom types using CustomTypeConverter
 
-// Load data
-Player loadedPlayer = await QuickSaveCore.LoadAsync<Player>("player", config);
+QuickSave allows you to save/load any type by converting it to a simpler serializable type (string, array, number, etc.).
 
-config.AddInstruction(new Vector3Instruction());
+**Example:** Let's say you have a `Person` class, but you want to save it as a simple string "Name:Age".
+
+#### 1. Your original class
+```csharp
+public class Person
+{
+    public string Name { get; set; }
+    public int Age { get; set; }
+}
+
+public class PersonToStringConverter : CustomTypeConverter<Person, string>
+{
+    public override string ToSerializable(Person value)
+    {
+        // Convert Person → string
+        return $"{value.Name}:{value.Age}";
+    }
+
+    public override Person FromSerializable(string value)
+    {
+        // Convert string → Person
+        if (string.IsNullOrEmpty(value))
+            throw new InvalidOperationException("Invalid person string");
+
+        var parts = value.Split(':');
+        if (parts.Length != 2)
+            throw new InvalidOperationException("Invalid format: expected Name:Age");
+
+        if (!int.TryParse(parts[1], out int age))
+            throw new InvalidOperationException("Age must be a number");
+
+        return new Person
+        {
+            Name = parts[0],
+            Age = age
+        };
+    }
+}
+
+// Register instruction (do this once, e.g. at app startup)
+config.AddInstruction(new PersonToStringConverter());
+
+// Now save/load works automatically
+var person = new Person { Name = "Maria", Age = 28 };
+await QuickSaveCore.SaveAsync("person", person, config);
+
+Person loadedPerson = await QuickSaveCore.LoadAsync<Person>("person", config);
+
+// Result: loadedPerson.Name == "Maria", loadedPerson.Age == 28
