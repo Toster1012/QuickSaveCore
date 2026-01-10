@@ -47,6 +47,7 @@ var config = new QuickSaveConfiguration
     UseGzipCompression = true,           // optional: enable compression
     CreateDirectoryIfNotExist = true     // automatically create folder if needed
 };
+csharp```
 
 ### Working with custom types using CustomTypeConverter
 
@@ -90,6 +91,7 @@ public class PersonToStringConverter : CustomTypeConverter<Person, string>
         };
     }
 }
+
 
 // Register instruction (do this once, e.g. at app startup)
 config.AddInstruction(new PersonToStringConverter());
