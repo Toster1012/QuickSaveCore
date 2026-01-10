@@ -28,3 +28,27 @@ A lightweight and fast C# library for saving and loading data with \*\*MessagePa
 
 \- Clean, simple, and strongly-typed API
 
+
+
+\## Quick Start
+
+using QuickSave.Core;
+
+// Настройка конфигурации (можно хранить в одном месте проекта)
+var config = new QuickSaveConfiguration
+{
+Paths = new Dictionary<string, string>
+{
+\["player"] = "saves/player.dat"
+},
+UseGzipCompression = true,           // включить сжатие (опционально)
+CreateDirectoryIfNotExist = true     // автоматически создать папку
+};
+
+// Сохранение данных
+var player = new Player { Name = "Alex", Level = 42, Score = 1337 };
+await QuickSaveCore.SaveAsync("player", player, config);
+
+// Загрузка данных
+Player loadedPlayer = await QuickSaveCore.LoadAsync<Player>("player", config);
+
