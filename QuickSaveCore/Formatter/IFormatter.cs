@@ -2,7 +2,7 @@
 
 namespace QS.Serialization
 {
-    public interface IFormatter
+    internal interface IFormatter
     {
         public bool Serialize<T>(string saveKey, T data, Configuration configuration, SerializeOption option);
 
