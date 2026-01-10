@@ -28,13 +28,3 @@ A lightweight and fast C# library for saving and loading data with \*\*MessagePa
 
 \- Clean, simple, and strongly-typed API
 
-
-
-\## Installation
-
-
-
-```bash
-
-dotnet add package QuickSave
-
