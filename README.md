@@ -30,25 +30,29 @@ A lightweight and fast C# library for saving and loading data with \*\*MessagePa
 
 
 
-\## Quick Start
+## Quick Start
 
+Here's the simplest way to get started with QuickSave:
+
+```csharp
 using QuickSave.Core;
 
-// Настройка конфигурации (можно хранить в одном месте проекта)
+// Basic configuration (you can store it in one place in your project)
 var config = new QuickSaveConfiguration
 {
-Paths = new Dictionary<string, string>
-{
-\["player"] = "saves/player.dat"
-},
-UseGzipCompression = true,           // включить сжатие (опционально)
-CreateDirectoryIfNotExist = true     // автоматически создать папку
+    Paths = new Dictionary<string, string>
+    {
+        ["player"] = "saves/player.dat"
+    },
+    UseGzipCompression = true,           // optional: enable compression
+    CreateDirectoryIfNotExist = true     // automatically create folder if needed
 };
 
-// Сохранение данных
+// Save data
 var player = new Player { Name = "Alex", Level = 42, Score = 1337 };
 await QuickSaveCore.SaveAsync("player", player, config);
 
-// Загрузка данных
+// Load data
 Player loadedPlayer = await QuickSaveCore.LoadAsync<Player>("player", config);
 
+config.AddInstruction(new Vector3Instruction());
