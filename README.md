@@ -19,26 +19,23 @@ A lightweight and fast C# library for saving and loading data with **MessagePack
 Basic usage:
 
 ````csharp
-using QuickSave.Core;
+using QS.Core;
 
 // Basic configuration (you can store it in one place in your project)
-var config = new QuickSaveConfiguration
+var config = new Configuration
 {
-    Paths = new Dictionary<string, string>
-    {
-        ["player"] = "saves/player.dat"
-    },
     UseGzipCompression = true,           // optional: enable compression
     CreateDirectoryIfNotExist = true     // automatically create folder if needed
 };
 
+config.AddPath("person", "saves/player.dat");
+
 // Save data
-var player = new Player { Name = "Alex", Level = 42, Score = 1337 };
-await QuickSaveCore.SaveAsync("player", player, config);
+var person = new Person { Name = "Alex", Age = 42 };
+await QuickSave.SaveAsync("player", person, config);
 
 // Load data
-Player loadedPlayer = await QuickSaveCore.LoadAsync<Player>("player", config);
-
+Person loadedPlayer = await QuickSave.LoadAsync<Person>("player", config);
 ````
 Working with custom types using CustomTypeConverter
 QuickSave allows you to save/load any type by converting it to a simpler serializable type (string, array, number, etc.).
@@ -59,19 +56,13 @@ Converter Definition
 ````csharp
 public class PersonToStringConverter : CustomTypeConverter<Person, string>
 {
-    public override string ToSerializable(Person value)
-    {
-        // Convert Person → string
-        return $"{value.Name}:{value.Age}";
-    }
-
-    public override Person FromSerializable(string value)
+    public override Person ReadObject(string existingValue)
     {
         // Convert string → Person
-        if (string.IsNullOrEmpty(value))
+        if (string.IsNullOrEmpty(existingValue))
             throw new InvalidOperationException("Invalid person string");
 
-        var parts = value.Split(':');
+        var parts = existingValue.Split(':');
         if (parts.Length != 2)
             throw new InvalidOperationException("Invalid format: expected Name:Age");
 
@@ -84,19 +75,45 @@ public class PersonToStringConverter : CustomTypeConverter<Person, string>
             Age = age
         };
     }
+
+    public override string WriteObject(Person? value)
+    {
+        return $"{value.Name}:{value.Age}";
+    }
 }
 ````
 
 Usage
 
 ````csharp
+using QS.Convert;
+using QS.Core;
+using QS.Serialization;
+
+
+// Basic configuration (you can store it in one place in your project)
+var config = new Configuration
+{
+    UseGzipCompression = true,           // optional: enable compression
+    CreateDirectoryIfNotExist = true     // automatically create folder if needed
+};
+
+var options = new SerializeOption()
+{
+    Formatter = new MessagePackFormatter()
+};
+
 // Register converter once (e.g. at app startup)
-config.AddInstruction(new PersonToStringConverter());
+options.AddCustomConverter(new PersonToStringConverter());
+
+config.AddPath("person", "saves/player.dat");
+
+QuickSave.Option = options;
 
 // Save & Load work automatically
 var person = new Person { Name = "Maria", Age = 28 };
-await QuickSaveCore.SaveAsync("person", person, config);
+await QuickSave.SaveAsync("person", person, config);
 
-Person loadedPerson = await QuickSaveCore.LoadAsync<Person>("person", config);
+Person loadedPerson = await QuickSave.LoadAsync<Person>("person", config);
 // Result: loadedPerson.Name == "Maria", loadedPerson.Age == 28
 ````

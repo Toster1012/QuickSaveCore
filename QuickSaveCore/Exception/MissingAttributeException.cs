@@ -1,4 +1,4 @@
-﻿namespace QuickSave
+﻿namespace QS
 {
     internal sealed class MissingAttributeException : SystemException
     {

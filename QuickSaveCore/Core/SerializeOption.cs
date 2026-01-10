@@ -1,7 +1,7 @@
-﻿using QuickSave.Convert;
-using QuickSave.Serialization;
+﻿using QS.Convert;
+using QS.Serialization;
 
-namespace QuickSave
+namespace QS.Core
 {
     public class SerializeOption
     {
@@ -11,13 +11,13 @@ namespace QuickSave
 
         public IEnumerable<CustomTypeConverter> CustomTypeConverters => _customTypeConverters;
 
-        public void AddInstructions(params CustomTypeConverter[] instructions)
+        public void AddCustomConverter(params CustomTypeConverter[] customTypeConverters)
         {
-            foreach (var instruction in instructions)
+            foreach (var converter in customTypeConverters)
             {
-                if (!_customTypeConverters.Contains(instruction))
+                if (!_customTypeConverters.Contains(converter))
                 {
-                    _customTypeConverters.Add(instruction);
+                    _customTypeConverters.Add(converter);
                 }
             }
         }

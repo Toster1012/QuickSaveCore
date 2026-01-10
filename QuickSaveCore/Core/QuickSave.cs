@@ -1,6 +1,6 @@
-﻿using QuickSave.Serialization;
+﻿using QS.Serialization;
 
-namespace QuickSave
+namespace QS.Core
 {
     public static class QuickSave
     {

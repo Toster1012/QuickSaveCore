@@ -1,4 +1,6 @@
-﻿namespace QuickSave.Serialization
+﻿using QS.Core;
+
+namespace QS.Serialization
 {
     public interface IFormatter
     {

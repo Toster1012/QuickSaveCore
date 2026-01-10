@@ -1,4 +1,4 @@
-﻿namespace QuickSave
+﻿namespace QS.Core
 {
     public sealed class Configuration
     {

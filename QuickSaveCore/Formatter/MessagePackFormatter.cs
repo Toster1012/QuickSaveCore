@@ -1,8 +1,9 @@
 ﻿using MessagePack;
-using QuickSave.Compression;
-using QuickSave.Convert;
+using QS.Compression;
+using QS.Convert;
+using QS.Core;
 
-namespace QuickSave.Serialization
+namespace QS.Serialization
 {
     public sealed class MessagePackFormatter : IFormatter
     {

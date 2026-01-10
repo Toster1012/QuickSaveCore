@@ -1,4 +1,4 @@
-﻿namespace QuickSave.Convert
+﻿namespace QS.Convert
 {
     public abstract class CustomTypeConverter
     {

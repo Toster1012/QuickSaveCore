@@ -1,6 +1,6 @@
 ﻿using System.IO.Compression;
 
-namespace QuickSave.Compression
+namespace QS.Compression
 {
     public static class GZipArchiver
     {
