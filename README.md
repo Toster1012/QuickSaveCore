@@ -9,7 +9,7 @@ A lightweight and fast C# library for saving and loading data with **MessagePack
 
 - Extremely compact and fast serialization using **MessagePack**
 - Optional **GZip** compression for smaller file sizes
-- Full support for **custom type converters** (instructions) — perfect for complex types like `Vector3`, custom structs/classes, etc.
+- Full support for **custom type converters** (instructions) - custom structs/classes, etc.
 - Fully **asynchronous** API (`SaveAsync` / `LoadAsync`)
 - Flexible configuration: file paths by keys, automatic directory creation, custom serialization options
 - Clean, simple, and strongly-typed API
