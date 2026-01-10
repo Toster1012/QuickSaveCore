@@ -35,7 +35,7 @@ var person = new Person { Name = "Alex", Age = 42 };
 await QuickSave.SaveAsync("person", person, config);
 
 // Load data
-Person loadedPlayer = await QuickSave.LoadAsync<Person>("person", config);
+Person loadedPerson = await QuickSave.LoadAsync<Person>("person", config);
 ````
 Working with custom types using CustomTypeConverter
 QuickSave allows you to save/load any type by converting it to a simpler serializable type (string, array, number, etc.).
