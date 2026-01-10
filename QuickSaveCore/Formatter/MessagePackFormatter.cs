@@ -1,24 +1,29 @@
 ﻿using MessagePack;
+using QuickSave.Compression;
+using QuickSave.Convert;
 
-namespace QuickSave
+namespace QuickSave.Serialization
 {
     public sealed class MessagePackFormatter : IFormatter
     {
         private readonly MessagePackSerializerOptions _options = MessagePackSerializer.Typeless.DefaultOptions;
 
-        public bool Serialize<T>(T data, Configuration configuration, SerializeOption option)
+        public bool Serialize<T>(string saveKey, T data, Configuration configuration, SerializeOption option)
         {
-            return SerializeAsync(data, configuration, option).Result;
+            return SerializeAsync(saveKey, data, configuration, option).Result;
         }
 
-        public T Deserialize<T>(Configuration configuration, SerializeOption option)
+        public T Deserialize<T>(string saveKey, Configuration configuration, SerializeOption option)
         {
-            return DeserializeAsync<T>(configuration, option).Result;
+            return DeserializeAsync<T>(saveKey, configuration, option).Result;
         }
 
-        public async Task<bool> SerializeAsync<T>(T data, Configuration configuration, SerializeOption option)
+        public async Task<bool> SerializeAsync<T>(string saveKey, T data, Configuration configuration, SerializeOption option)
         {
-            string? _directory = Path.GetDirectoryName(configuration.Path);
+            if (!configuration.Paths.TryGetValue(saveKey, out string? path))
+                return false;
+
+            string? _directory = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(_directory) && !Directory.Exists(_directory))
             {
                 if (configuration.CreateDirectoryIfNotExist)
@@ -33,17 +38,17 @@ namespace QuickSave
 
             try
             {
-                await using var _fileStream = new FileStream(configuration.Path, FileMode.Create, FileAccess.Write,
+                await using var _fileStream = new FileStream(path, FileMode.Create, FileAccess.Write,
                      FileShare.Write, bufferSize: 4096, useAsync: true);
 
-                foreach (var serializeInstruction in option.SerializeInstructions)
+                foreach (var customTypeConverter in option.CustomTypeConverters)
                 {
-                    if (serializeInstruction.SerializeType == typeof(T))
+                    if (customTypeConverter.SerializeType == typeof(T))
                     {
                         if (configuration.UseGzipCompression)
-                            return await Serialize(GZipArchiver.Compress(_fileStream), serializeInstruction.Write(data));
+                            return await Serialize(GZipArchiver.Compress(_fileStream), customTypeConverter.Write(data));
                         else
-                            return await Serialize(_fileStream, serializeInstruction.Write(data));   
+                            return await Serialize(_fileStream, customTypeConverter.Write(data));   
                     }
                 }
 
@@ -54,21 +59,24 @@ namespace QuickSave
             }
             catch (Exception exception)
             {
-                throw new InvalidOperationException($"Failed to serialize data to {configuration.Path}", exception);
+                throw new InvalidOperationException($"Failed to serialize data to {path}", exception);
             }
         }
 
-        public async Task<T> DeserializeAsync<T>(Configuration configuration, SerializeOption option)
+        public async Task<T> DeserializeAsync<T>(string saveKey, Configuration configuration, SerializeOption option)
         {
+            if (!configuration.Paths.TryGetValue(saveKey, out string? path))
+                return default;
+
             try
             {
-                if (!File.Exists(configuration.Path))
-                    throw new Exception($"File not foun from path: {configuration.Path}");
+                if (!File.Exists(path))
+                    throw new Exception($"File not foun from path: {path}");
 
-                await using var _fileStream = new FileStream(configuration.Path, FileMode.Open, FileAccess.Read, 
+                await using var _fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, 
                     FileShare.Read, bufferSize: 4096, useAsync: true);
 
-                foreach (var serializeInstruction in option.SerializeInstructions)
+                foreach (var serializeInstruction in option.CustomTypeConverters)
                 {
                     if (serializeInstruction.SerializeType == typeof(T))
                     {
@@ -86,32 +94,36 @@ namespace QuickSave
             }
             catch (Exception exception)
             {
-                throw new InvalidOperationException($"Failed to serialize data to {configuration.Path}", exception);
+                throw new InvalidOperationException($"Failed to serialize data to {path}", exception);
             }
         }
 
         private async Task<bool> Serialize<T>(Stream stream, T serializeObject)
         {
-            if (serializeObject == null)
+            if (serializeObject == null) 
                 return false;
 
-            long _startPosition = stream.Position;
-            QSValue _qSValue = new QSValue(serializeObject, typeof(T));
-
-            MessagePackSerializer.Serialize(stream, _qSValue, _options);
-            await stream.FlushAsync();
-
-            return (stream.Position - _startPosition) > 0;
+            try
+            {
+                QSValue _qSValue = new QSValue(serializeObject, typeof(T));
+                await MessagePackSerializer.SerializeAsync(stream, _qSValue, _options);
+                await stream.FlushAsync();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
-        private async Task<T> Deserialize<T>(Stream stream, SerializeInstruction? serializeInstruction = null)
+        private async Task<T> Deserialize<T>(Stream stream, CustomTypeConverter? customTypeConverter = null)
         {
             try
             {
                 QSValue _qSValue = MessagePackSerializer.Deserialize<QSValue>(stream, _options);
 
-                if (serializeInstruction != null)
-                    return (T)serializeInstruction.Read(_qSValue.Value);
+                if (customTypeConverter != null)
+                    return (T)customTypeConverter.Read(_qSValue.Value);
 
                 return (T)_qSValue.Value;
             }

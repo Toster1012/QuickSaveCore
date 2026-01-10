@@ -1,6 +1,6 @@
 ﻿using MessagePack;
 
-namespace QuickSave
+namespace QuickSave.Serialization
 {
     [Serializable]
     internal sealed class QSValue
