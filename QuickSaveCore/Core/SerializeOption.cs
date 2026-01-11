@@ -5,7 +5,7 @@ namespace QS.Core
 {
     public class SerializeOption
     {
-        public Formatter Formatter { get; set; } = new MessagePackFormatter();
+        public Formatter Formatter { get; set; } = new BinaryFormatter();
 
         private List<CustomTypeConverter> _customTypeConverters = new List<CustomTypeConverter>();
 

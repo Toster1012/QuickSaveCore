@@ -129,6 +129,6 @@ namespace QS.Core
             return exception.InnerException != null && IsRetryableError(exception.InnerException);
         }
 
-        private static SerializeOption GetDefualtOptions() => new SerializeOption() { Formatter = new MessagePackFormatter() };
+        private static SerializeOption GetDefualtOptions() => new SerializeOption() { Formatter = new BinaryFormatter() };
     }
 }

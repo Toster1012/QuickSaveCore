@@ -3,6 +3,7 @@
     public abstract class CustomTypeConverter
     {
         public abstract Type SerializeType { get; }
+        public abstract Type DeserializeType { get; }
 
         public abstract object Write(object? value);
 
@@ -12,6 +13,7 @@
     public abstract class CustomTypeConverter<TSource, TTarget> : CustomTypeConverter
     {
         public sealed override Type SerializeType => typeof(TSource);
+        public sealed override Type DeserializeType => typeof(TTarget);
 
         public sealed override object Write(object? value)
         {

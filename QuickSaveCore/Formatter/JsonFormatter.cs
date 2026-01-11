@@ -24,8 +24,7 @@ namespace QS.Serialization
 
                 using var _streamWriter = new StreamWriter(stream, leaveOpen: true);
 
-                QSValue _qSValue = new QSValue(serializeObject, typeof(T));
-                string _json = JsonConvert.SerializeObject(_qSValue, typeof(QSValue), _settings);
+                string _json = JsonConvert.SerializeObject(serializeObject, typeof(T), _settings);
 
                 await _streamWriter.WriteAsync(_json);
                 await stream.FlushAsync();
@@ -46,28 +45,29 @@ namespace QS.Serialization
                 using var _streamReader = new StreamReader(stream, leaveOpen: true);
 
                 string _json = await _streamReader.ReadToEndAsync();
-                QSValue? _qSValue = JsonConvert.DeserializeObject<QSValue>(_json, _settings);
+                object? _deserializeObject;
 
-                if (_qSValue?.Value == null)
+                if (customTypeConverter != null)
+                    _deserializeObject = JsonConvert.DeserializeObject(_json, customTypeConverter.DeserializeType, _settings);
+                else
+                    _deserializeObject = JsonConvert.DeserializeObject<T>(_json, _settings);
+
+                if (_deserializeObject == null)
                     throw new InvalidOperationException("Failed to deserialize value is null");
 
                 if (customTypeConverter != null)
-                    return (T)customTypeConverter.Read(_qSValue.Value);
+                    return (T)customTypeConverter.Read(_deserializeObject);
 
-                if (_qSValue.Value is T result)
+                if (_deserializeObject is T result)
                     return result;
   
                 throw new InvalidCastException(
-                    $"Cannot cast deserialized value of type {_qSValue.Value?.GetType().Name} " +
+                    $"Cannot cast deserialized value of type {_deserializeObject?.GetType().Name} " +
                     $"to expected type {typeof(T).Name}");
             }
             catch
             {
                 throw;
-            }
-            finally
-            {
-                await stream.FlushAsync();
             }
         }
     }
