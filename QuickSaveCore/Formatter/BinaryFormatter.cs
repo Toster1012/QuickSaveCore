@@ -5,7 +5,7 @@ namespace QS.Serialization
 {
     public sealed class BinaryFormatter : Formatter
     {
-        private readonly MessagePackSerializerOptions _options = MessagePackSerializer.DefaultOptions;
+        private readonly MessagePackSerializerOptions _options = MessagePackSerializer.Typeless.DefaultOptions;
 
         protected sealed override async Task<bool> Serialize<T>(Stream stream, T serializeObject)
         {
@@ -14,7 +14,7 @@ namespace QS.Serialization
                 if (serializeObject == null) 
                     return false;
 
-                await MessagePackSerializer.SerializeAsync(stream, serializeObject, _options);
+                await MessagePackSerializer.Typeless.SerializeAsync(stream, serializeObject, _options);
                 await stream.FlushAsync();
                 return true;
             }
@@ -32,9 +32,9 @@ namespace QS.Serialization
                 object? _deserializeObject;
 
                 if (customTypeConverter != null)
-                    _deserializeObject = MessagePackSerializer.Deserialize(customTypeConverter.DeserializeType, stream, _options);
+                    _deserializeObject = MessagePackSerializer.Typeless.Deserialize(stream, _options);
                 else
-                    _deserializeObject = MessagePackSerializer.Deserialize<T>(stream, _options);
+                    _deserializeObject = MessagePackSerializer.Typeless.Deserialize(stream, _options);
 
                 if (customTypeConverter != null)
                     return (T)customTypeConverter.Read(_deserializeObject);

@@ -12,7 +12,8 @@ namespace QS.Serialization
             NullValueHandling = NullValueHandling.Ignore,
             DefaultValueHandling = DefaultValueHandling.Ignore,
             ContractResolver = new CamelCasePropertyNamesContractResolver(),
-            TypeNameHandling = TypeNameHandling.Auto
+            TypeNameHandling = TypeNameHandling.All, 
+            TypeNameAssemblyFormatHandling = TypeNameAssemblyFormatHandling.Full
         };
 
         protected sealed async override Task<bool> Serialize<T>(Stream stream, T serializeObject)

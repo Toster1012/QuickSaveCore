@@ -6,14 +6,16 @@ namespace QS.Core
     {
         public static SerializeOption Option { get; set; } = GetDefualtOptions();
 
-        public static void Save<T>(string saveKey, T date, Configuration configuration, Action<bool>? callback = null)
+        public static void Save<T>(string saveKey, T date, Configuration configuration,
+            Action<bool>? callback = null, SerializeOption? serializeOption = null)
         {
-            SaveAsync(saveKey, date, configuration, callback).GetAwaiter().GetResult();
+            SaveAsync(saveKey, date, configuration, callback, serializeOption ?? Option).GetAwaiter().GetResult();
         }
 
-        public static T Load<T>(string saveKey, Configuration configuration, Action<bool>? callback = null)
+        public static T Load<T>(string saveKey, Configuration configuration, 
+            Action<bool>? callback = null, SerializeOption? serializeOption = null)
         {
-            return LoadAsync<T>(saveKey, configuration, callback).GetAwaiter().GetResult();
+            return LoadAsync<T>(saveKey, configuration, callback, serializeOption ?? Option).GetAwaiter().GetResult();
         }
 
         public static void DeleteSave(string saveKey, Configuration configuration, Action<bool>? callback = null)
@@ -26,18 +28,24 @@ namespace QS.Core
             DeleteAllSaveAsync(configuration, callback).GetAwaiter().GetResult();
         }
 
-        public static async Task SaveAsync<T>(string saveKey, T date, Configuration configuration, Action<bool>? callback = null)
+        public static async Task SaveAsync<T>(string saveKey, T date, Configuration configuration, 
+            Action<bool>? callback = null, SerializeOption? serializeOption = null)
         {
-            if (await Option.Formatter.SerializeAsync(saveKey, date, configuration, Option))
+            SerializeOption _serializeOption = serializeOption ?? Option;
+
+            if (await _serializeOption.Formatter.SerializeAsync(saveKey, date, configuration, _serializeOption))
                 callback?.Invoke(true);
 
             callback?.Invoke(false);
         }
 
-        public static async Task<T> LoadAsync<T>(string saveKey, Configuration configuration, Action<bool>? callback = null)
+        public static async Task<T> LoadAsync<T>(string saveKey, Configuration configuration, 
+            Action<bool>? callback = null, SerializeOption? serializeOption = null)
         {
             const int MaxRetries = 10;
             const int BaseDelayMs = 50;
+
+            SerializeOption _serializeOption = serializeOption ?? Option;
 
             Exception? _lastException = null;
 
@@ -45,7 +53,7 @@ namespace QS.Core
             {
                 try
                 {
-                    T _result = await Option.Formatter.DeserializeAsync<T>(saveKey, configuration, Option);
+                    T _result = await _serializeOption.Formatter.DeserializeAsync<T>(saveKey, configuration, _serializeOption);
                     callback?.Invoke(true);
                     return _result;
                 }
