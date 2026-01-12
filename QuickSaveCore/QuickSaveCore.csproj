@@ -1,14 +1,63 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="MessagePack" Version="3.1.4" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-  </ItemGroup>
+	<ItemGroup>
+		<!-- Удалите ILRepack.MSBuild.Task и используйте обычный ILRepack -->
+		<PackageReference Include="ILRepack" Version="2.0.44" />
+		<PackageReference Include="MessagePack" Version="3.1.4" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+	</ItemGroup>
 
+	<Target Name="MergeAssemblies" AfterTargets="Build">
+		<PropertyGroup>
+			<ILRepackExe>$(NuGetPackageRoot)\ilrepack\2.0.44\tools\ilrepack.exe</ILRepackExe>
+			<MergedOutputDir>$(OutputPath)merged\</MergedOutputDir>
+		</PropertyGroup>
+
+		<!-- Проверяем существование ILRepack -->
+		<Error Text="ILRepack не найден. Выполните restore packages."
+			   Condition="!Exists('$(ILRepackExe)')" />
+
+		<!-- Фильтруем только необходимые сборки -->
+		<ItemGroup>
+			<AssembliesToMerge Include="$(OutputPath)$(AssemblyName).dll" />
+
+			<!-- MessagePack и зависимости -->
+			<AssembliesToMerge Include="$(OutputPath)MessagePack.dll"
+							   Condition="Exists('$(OutputPath)MessagePack.dll')" />
+			<AssembliesToMerge Include="$(OutputPath)MessagePack.Annotations.dll"
+							   Condition="Exists('$(OutputPath)MessagePack.Annotations.dll')" />
+
+			<!-- Newtonsoft.Json -->
+			<AssembliesToMerge Include="$(OutputPath)Newtonsoft.Json.dll"
+							   Condition="Exists('$(OutputPath)Newtonsoft.Json.dll')" />
+
+			<!-- Системные зависимости MessagePack -->
+			<AssembliesToMerge Include="$(OutputPath)System.Runtime.CompilerServices.Unsafe.dll"
+							   Condition="Exists('$(OutputPath)System.Runtime.CompilerServices.Unsafe.dll')" />
+			<AssembliesToMerge Include="$(OutputPath)System.Memory.dll"
+							   Condition="Exists('$(OutputPath)System.Memory.dll')" />
+			<AssembliesToMerge Include="$(OutputPath)System.Buffers.dll"
+							   Condition="Exists('$(OutputPath)System.Buffers.dll')" />
+		</ItemGroup>
+
+		<MakeDir Directories="$(MergedOutputDir)" />
+
+		<Message Text="Объединяемые сборки: @(AssembliesToMerge)" Importance="high" />
+
+		<!-- Формируем команду -->
+		<Exec Command="&quot;$(ILRepackExe)&quot; /out:&quot;$(MergedOutputDir)$(AssemblyName).dll&quot; /internalize /parallel /verbose @(AssembliesToMerge->'&quot;%(FullPath)&quot;', ' ')"
+			  Condition="@(AssembliesToMerge->Count()) > 1"
+			  IgnoreExitCode="false" />
+
+		<Message Text="Объединенная сборка создана: $(MergedOutputDir)$(AssemblyName).dll"
+				 Condition="@(AssembliesToMerge->Count()) > 1"
+				 Importance="high" />
+	</Target>
 </Project>
