@@ -20,7 +20,6 @@ namespace QS.Serialization
             }
             catch
             {
-                return false;
                 throw;
             }
         }
@@ -35,9 +34,6 @@ namespace QS.Serialization
                     _deserializeObject = MessagePackSerializer.Typeless.Deserialize(stream, _options);
                 else
                     _deserializeObject = MessagePackSerializer.Typeless.Deserialize(stream, _options);
-
-                if (customTypeConverter != null)
-                    return (T)customTypeConverter.Read(_deserializeObject);
 
                 if (_deserializeObject == null)
                     throw new InvalidOperationException("Failed to deserialize value is null");
