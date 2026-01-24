@@ -1,6 +1,9 @@
 ﻿using QS.Compression;
 using QS.Convert;
 using QS.Core;
+using System;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace QS.Serialization
 {
@@ -11,7 +14,7 @@ namespace QS.Serialization
             return SerializeAsync(saveKey, data, configuration, option).GetAwaiter().GetResult();
         }
 
-        public T Deserialize<T>(string saveKey, Configuration configuration, SerializeOption option)
+        public T? Deserialize<T>(string saveKey, Configuration configuration, SerializeOption option)
         {
             return DeserializeAsync<T>(saveKey, configuration, option).GetAwaiter().GetResult();
         }
@@ -37,7 +40,7 @@ namespace QS.Serialization
             try
             {
                 await using var _fileStream = new FileStream(path, FileMode.Create, FileAccess.Write,
-                     FileShare.Write, bufferSize: 4096, useAsync: true);
+                     FileShare.Read, bufferSize: 4096, useAsync: true);
 
                 foreach (var customTypeConverter in option.CustomTypeConverters)
                 {
@@ -61,7 +64,7 @@ namespace QS.Serialization
             }
         }
 
-        public async Task<T> DeserializeAsync<T>(string saveKey, Configuration configuration, SerializeOption option)
+        public async Task<T?> DeserializeAsync<T>(string saveKey, Configuration configuration, SerializeOption option)
         {
             if (!configuration.Paths.TryGetValue(saveKey, out string? path))
                 return default;
@@ -98,6 +101,6 @@ namespace QS.Serialization
 
         protected abstract Task<bool> Serialize<T>(Stream stream, T serializeObject);
 
-        protected abstract Task<T> Deserialize<T>(Stream stream, CustomTypeConverter? customTypeConverter = null);
+        protected abstract Task<T?> Deserialize<T>(Stream stream, CustomTypeConverter? customTypeConverter = null);
     }
 }

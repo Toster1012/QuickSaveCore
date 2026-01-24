@@ -1,4 +1,9 @@
 ﻿using QS.Serialization;
+using System;
+using System.Threading.Tasks;
+using System.IO;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace QS.Core
 {
@@ -6,26 +11,29 @@ namespace QS.Core
     {
         public static SerializeOption Option { get; set; } = GetDefualtOptions();
 
-        public static void Save<T>(string saveKey, T date, Configuration configuration,
-            Action<bool>? callback = null, SerializeOption? serializeOption = null)
+        public static void Save<T>(string saveKey, T date, Configuration configuration, SerializeOption? serializeOption = null)
         {
-            SaveAsync(saveKey, date, configuration, callback, serializeOption ?? Option).GetAwaiter().GetResult();
+            Task.Run(async () =>
+                await SaveAsync(saveKey, date, configuration, serializeOption: serializeOption ?? Option));
         }
 
-        public static T Load<T>(string saveKey, Configuration configuration, 
-            Action<bool>? callback = null, SerializeOption? serializeOption = null)
+        public static T? Load<T>(string saveKey, Configuration configuration, SerializeOption? serializeOption = null)
         {
-            return LoadAsync<T>(saveKey, configuration, callback, serializeOption ?? Option).GetAwaiter().GetResult();
+            return Task.Run(async () =>
+                await LoadAsync<T>(saveKey, configuration, serializeOption: serializeOption ?? Option)
+            ).GetAwaiter().GetResult();
         }
 
-        public static void DeleteSave(string saveKey, Configuration configuration, Action<bool>? callback = null)
+        public static void DeleteSave(string saveKey, Configuration configuration)
         {
-            DeleteSaveAsync(saveKey, configuration, (result) => { callback?.Invoke(result); }).GetAwaiter().GetResult();
+            Task.Run(async () =>
+                await DeleteSaveAsync(saveKey, configuration));
         }
 
-        public static void DeleteAllSave(Configuration configuration, Action<bool>? callback = null)
+        public static void DeleteAllSave(Configuration configuration)
         {
-            DeleteAllSaveAsync(configuration, callback).GetAwaiter().GetResult();
+            Task.Run(async () =>
+                await DeleteAllSaveAsync(configuration));
         }
 
         public static async Task SaveAsync<T>(string saveKey, T date, Configuration configuration, 
@@ -39,7 +47,7 @@ namespace QS.Core
             callback?.Invoke(false);
         }
 
-        public static async Task<T> LoadAsync<T>(string saveKey, Configuration configuration, 
+        public static async Task<T?> LoadAsync<T>(string saveKey, Configuration configuration, 
             Action<bool>? callback = null, SerializeOption? serializeOption = null)
         {
             const int MaxRetries = 10;
@@ -53,7 +61,7 @@ namespace QS.Core
             {
                 try
                 {
-                    T _result = await _serializeOption.Formatter.DeserializeAsync<T>(saveKey, configuration, _serializeOption);
+                    T? _result = await _serializeOption.Formatter.DeserializeAsync<T>(saveKey, configuration, _serializeOption);
                     callback?.Invoke(true);
                     return _result;
                 }
@@ -121,14 +129,13 @@ namespace QS.Core
         {
             if (exception is IOException iOException)
             {
-                var _message = iOException.Message.ToLowerInvariant();
+                string _message = iOException.Message.ToLowerInvariant();
                 if (_message.Contains("being used") || _message.Contains("used by another process") || (iOException.HResult & 0xFFFF) is 32 or 33)
                     return true;
             }
 
             if (exception is InvalidDataException ||
                 exception is EndOfStreamException ||
-                exception is MessagePack.MessagePackSerializationException ||
                 (exception is AggregateException aggregateException && aggregateException.InnerExceptions.Any(IsRetryableError)))
             {
                 return true;

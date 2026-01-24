@@ -1,5 +1,6 @@
 ﻿using QS.Convert;
 using QS.Serialization;
+using System.Collections.Generic;
 
 namespace QS.Core
 {

@@ -1,5 +1,8 @@
 ﻿using MessagePack;
 using QS.Convert;
+using System;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace QS.Serialization
 {
@@ -11,7 +14,7 @@ namespace QS.Serialization
         {
             try
             {
-                if (serializeObject == null) 
+                if (serializeObject == null)
                     return false;
 
                 await MessagePackSerializer.Typeless.SerializeAsync(stream, serializeObject, _options);
@@ -25,25 +28,22 @@ namespace QS.Serialization
             }
         }
 
-        protected sealed override async Task<T> Deserialize<T>(Stream stream, CustomTypeConverter? customTypeConverter = null)
+        protected sealed override async Task<T?> Deserialize<T>(Stream stream, CustomTypeConverter? customTypeConverter = null) where T : default
         {
             try
             {
                 object? _deserializeObject;
 
                 if (customTypeConverter != null)
-                    _deserializeObject = MessagePackSerializer.Typeless.Deserialize(stream, _options);
+                    _deserializeObject = await Task.Run(() => MessagePackSerializer.Typeless.Deserialize(stream, _options));
                 else
-                    _deserializeObject = MessagePackSerializer.Typeless.Deserialize(stream, _options);
-
-                if (customTypeConverter != null)
-                    return (T)customTypeConverter.Read(_deserializeObject);
+                    _deserializeObject = await Task.Run(() => MessagePackSerializer.Typeless.Deserialize(stream, _options));
 
                 if (_deserializeObject == null)
                     throw new InvalidOperationException("Failed to deserialize value is null");
 
                 if (customTypeConverter != null)
-                    return (T)customTypeConverter.Read(_deserializeObject);
+                    return (T?)customTypeConverter.Read(_deserializeObject);
 
                 if (_deserializeObject is T result)
                     return result;
@@ -58,4 +58,4 @@ namespace QS.Serialization
             }
         }
     }
-}
+}   

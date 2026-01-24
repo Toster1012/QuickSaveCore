@@ -1,4 +1,6 @@
-﻿namespace QS
+﻿using System;
+
+namespace QS
 {
     internal sealed class MissingAttributeException : SystemException
     {

@@ -1,6 +1,9 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using QS.Convert;
+using System;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace QS.Serialization
 {
@@ -23,7 +26,7 @@ namespace QS.Serialization
                 if (serializeObject == null)
                     return false;
 
-                using var _streamWriter = new StreamWriter(stream, leaveOpen: true);
+                using var _streamWriter = new StreamWriter(stream);
 
                 string _json = JsonConvert.SerializeObject(serializeObject, typeof(T), _settings);
 
@@ -39,11 +42,11 @@ namespace QS.Serialization
             }
         }
 
-        protected sealed async override Task<T> Deserialize<T>(Stream stream, CustomTypeConverter? customTypeConverter = null)
+        protected sealed async override Task<T?> Deserialize<T>(Stream stream, CustomTypeConverter? customTypeConverter = null) where T : default
         {
             try
             {
-                using var _streamReader = new StreamReader(stream, leaveOpen: true);
+                using var _streamReader = new StreamReader(stream);
 
                 string _json = await _streamReader.ReadToEndAsync();
                 object? _deserializeObject;
@@ -57,7 +60,7 @@ namespace QS.Serialization
                     throw new InvalidOperationException("Failed to deserialize value is null");
 
                 if (customTypeConverter != null)
-                    return (T)customTypeConverter.Read(_deserializeObject);
+                    return (T?)customTypeConverter.Read(_deserializeObject);
 
                 if (_deserializeObject is T result)
                     return result;

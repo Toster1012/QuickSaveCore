@@ -1,4 +1,6 @@
-﻿namespace QS.Core
+﻿using System.Collections.Generic;
+
+namespace QS.Core
 {
     public sealed class Configuration
     {

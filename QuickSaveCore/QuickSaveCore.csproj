@@ -1,95 +1,58 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
 	<PropertyGroup>
-		<TargetFramework>net9.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
+		<TargetFramework>netstandard2.1</TargetFramework>
+		<LangVersion>9.0</LangVersion>
 		<Nullable>enable</Nullable>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 	</PropertyGroup>
-
 	<ItemGroup>
 		<PackageReference Include="ILRepack" Version="2.0.44" />
-		<PackageReference Include="MessagePack" Version="3.1.4" />
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="MessagePack" Version="2.5.187" />
 	</ItemGroup>
-
 	<Target Name="CollectAllAssemblies" AfterTargets="Build">
 		<ItemGroup>
 			<AllOutputAssemblies Include="$(OutputPath)*.dll" />
-
-			<FilteredAssemblies Include="@(AllOutputAssemblies)"
-								Exclude="$(OutputPath)System.*.dll" />
-
+			<FilteredAssemblies Include="@(AllOutputAssemblies)" Exclude="$(OutputPath)System.*.dll" />
 			<NeededSystemAssemblies Include="$(OutputPath)System.Collections.Immutable.dll" />
 			<NeededSystemAssemblies Include="$(OutputPath)System.Memory.dll" />
 			<NeededSystemAssemblies Include="$(OutputPath)System.Buffers.dll" />
 			<NeededSystemAssemblies Include="$(OutputPath)System.Runtime.CompilerServices.Unsafe.dll" />
-			<NeededSystemAssemblies Include="$(OutputPath)System.Security.Cryptography.dll" />
-			<NeededSystemAssemblies Include="$(OutputPath)System.Runtime.Intrinsics.dll" />
-
-			<ExistingNeededAssemblies Include="@(NeededSystemAssemblies)"
-									  Condition="Exists('%(Identity)')" />
-
-			<PackageAssemblies Include="$(OutputPath)MessagePack.dll"
-							   Condition="Exists('$(OutputPath)MessagePack.dll')" />
-			<PackageAssemblies Include="$(OutputPath)MessagePack.Annotations.dll"
-							   Condition="Exists('$(OutputPath)MessagePack.Annotations.dll')" />
-			<PackageAssemblies Include="$(OutputPath)Newtonsoft.Json.dll"
-							   Condition="Exists('$(OutputPath)Newtonsoft.Json.dll')" />
-			<PackageAssemblies Include="$(OutputPath)Microsoft.NET.StringTools.dll"
-							   Condition="Exists('$(OutputPath)Microsoft.NET.StringTools.dll')" />
-
-			<MainAssembly Include="$(OutputPath)$(AssemblyName).dll"
-						  Condition="Exists('$(OutputPath)$(AssemblyName).dll')" />
-
+			<NeededSystemAssemblies Include="$(OutputPath)System.Threading.Tasks.Extensions.dll" />
+			<ExistingNeededAssemblies Include="@(NeededSystemAssemblies)" Condition="Exists('%(Identity)')" />
+			<PackageAssemblies Include="$(OutputPath)MessagePack.dll" Condition="Exists('$(OutputPath)MessagePack.dll')" />
+			<PackageAssemblies Include="$(OutputPath)MessagePack.Annotations.dll" Condition="Exists('$(OutputPath)MessagePack.Annotations.dll')" />
+			<PackageAssemblies Include="$(OutputPath)Newtonsoft.Json.dll" Condition="Exists('$(OutputPath)Newtonsoft.Json.dll')" />
+			<PackageAssemblies Include="$(OutputPath)Microsoft.NET.StringTools.dll" Condition="Exists('$(OutputPath)Microsoft.NET.StringTools.dll')" />
+			<PackageAssemblies Include="$(OutputPath)Microsoft.Bcl.AsyncInterfaces.dll" Condition="Exists('$(OutputPath)Microsoft.Bcl.AsyncInterfaces.dll')" />
+			<MainAssembly Include="$(OutputPath)$(AssemblyName).dll" Condition="Exists('$(OutputPath)$(AssemblyName).dll')" />
 			<AllAssembliesToMerge Include="@(MainAssembly)" />
 			<AllAssembliesToMerge Include="@(FilteredAssemblies)" />
 			<AllAssembliesToMerge Include="@(ExistingNeededAssemblies)" />
 			<AllAssembliesToMerge Include="@(PackageAssemblies)" />
-
-			<UniqueAssembliesToMerge Include="@(AllAssembliesToMerge->Distinct())" />
+			<UniqueAssembliesToMerge Include="@(AllAssembliesToMerge-&gt;Distinct())" />
 		</ItemGroup>
-
-		<Message Text="Found assemblies to combine: @(UniqueAssembliesToMerge->Count())"
-				 Importance="high" />
-		<Message Text="Assemblies: %(UniqueAssembliesToMerge.Identity)"
-				 Importance="normal" />
+		<Message Text="Found assemblies to combine: @(UniqueAssembliesToMerge-&gt;Count())" Importance="high" />
+		<Message Text="Assemblies: %(UniqueAssembliesToMerge.Identity)" Importance="normal" />
 	</Target>
-
 	<Target Name="MergeAssemblies" AfterTargets="CollectAllAssemblies">
 		<PropertyGroup>
 			<ILRepackExe>$(NuGetPackageRoot)ilrepack\2.0.44\tools\ilrepack.exe</ILRepackExe>
 			<MergedOutputDir>$(OutputPath)merged\</MergedOutputDir>
 		</PropertyGroup>
-
-		<Error Text="ILRepack was not found. Run: dotnet restore"
-			   Condition="!Exists('$(ILRepackExe)')" />
-
-		<Error Text="There are no assemblies to combine"
-			   Condition="@(UniqueAssembliesToMerge->Count()) &lt; 2" />
-
+		<Error Text="ILRepack was not found. Run: dotnet restore" Condition="!Exists('$(ILRepackExe)')" />
+		<Error Text="There are no assemblies to combine" Condition="@(UniqueAssembliesToMerge-&gt;Count()) &lt; 2" />
 		<MakeDir Directories="$(MergedOutputDir)" />
-
 		<PropertyGroup>
 			<ILRepackCommand>"$(ILRepackExe)" /out:"$(MergedOutputDir)$(AssemblyName).dll" /internalize /parallel</ILRepackCommand>
 		</PropertyGroup>
-
 		<PropertyGroup>
 			<ILRepackCommand>$(ILRepackCommand) @(UniqueAssembliesToMerge->'"%(FullPath)"', ' ')</ILRepackCommand>
 		</PropertyGroup>
-
 		<Message Text="Executing ILRepack..." Importance="high" />
 		<Message Text="Command: $(ILRepackCommand)" Importance="normal" />
-
-		<Exec Command="$(ILRepackCommand)"
-			  IgnoreExitCode="false" />
-
-		<Message Text="The combined assembly has been created: $(MergedOutputDir)$(AssemblyName).dll"
-				 Condition="Exists('$(MergedOutputDir)$(AssemblyName).dll')"
-				 Importance="high" />
-
-		<Warning Text="The combined assembly has not been created!"
-				 Condition="!Exists('$(MergedOutputDir)$(AssemblyName).dll')"
-				 Importance="high" />
+		<Exec Command="$(ILRepackCommand)" IgnoreExitCode="false" />
+		<Message Text="The combined assembly has been created: $(MergedOutputDir)$(AssemblyName).dll" Condition="Exists('$(MergedOutputDir)$(AssemblyName).dll')" Importance="high" />
+		<Warning Text="The combined assembly has not been created!" Condition="!Exists('$(MergedOutputDir)$(AssemblyName).dll')" Importance="high" />
 	</Target>
 </Project>
